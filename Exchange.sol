@@ -47,7 +47,7 @@ contract Exchange is Ownable {
     // Internal Listing Functions
 
     function generateListingId (Listing memory _listing) internal view returns(uint256) {
-        return uint256(keccak256(abi.encodePacked(abi.encodePacked(_listing.seller, _listing.buyer, _listing.tokenAddress, _listing.tokenId, _listing.price))));
+        return uint256(keccak256(abi.encodePacked(_listing.seller, _listing.buyer, _listing.tokenAddress, _listing.tokenId, _listing.price)));
     }
 
     function completePurchase (uint256 _listingId, Listing memory _listing) internal {
@@ -60,6 +60,10 @@ contract Exchange is Ownable {
     }
 
     // External Listing Functions
+
+    function getListingId (address _seller, address _buyer, address _tokenAddress, uint256 _tokenId, uint256 _price) external view returns(uint256) {
+        return uint256(keccak256(abi.encodePacked(_seller, _buyer, _tokenAddress, _tokenId, _price)));
+    }
 
     function createListing (address _buyer, address _tokenAddress, uint256 _tokenId, uint256 _price) external returns(uint256) {
         require(isValidListing(msg.sender, _buyer, _tokenAddress, _tokenId));
