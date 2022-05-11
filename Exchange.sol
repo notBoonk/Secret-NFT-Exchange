@@ -16,7 +16,17 @@ contract Exchange is Ownable {
         payable(msg.sender).transfer(address(this).balance);
     }
 
-    // Validation Functions
+    // External Validation Functions
+    
+    function isValidListing (address _tokenAddress, uint256 _tokenId) external view returns(bool) {
+        Listing memory _Listing = ListingsByTokenAddress[_tokenAddress][_tokenId];
+        return (
+            block.timestamp <= _Listing.expiration &&
+            isOwner(_Listing.tokenAddress, _Listing.id, _Listing.owner)
+        );
+    }
+
+    // Internal Validation Functions
 
     function isValidPurchaseOrder (Listing memory _listing) internal view returns(bool) {
         return (
