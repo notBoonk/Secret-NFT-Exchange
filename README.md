@@ -1,2 +1,2 @@
-# Secret-NFT-Marketplace
- Fully on-chain & lightweight NFT marketplace.
+# Secret NFT Exchange
+ Fully on-chain & lightweight NFT exchange, for private OTC transactions.

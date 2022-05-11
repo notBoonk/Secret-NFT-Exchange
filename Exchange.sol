@@ -24,25 +24,45 @@ contract Exchange is Ownable {
 
     // Internal Validation Functions
 
-    function isOwner (address _tokenAddress, uint256 _tokenId, address _user) internal view returns(bool) {
+    function isValidListing (address _seller, address _buyer, address _tokenAddress, uint256 _tokenId) internal view returns(bool) {
         IERC721 TokenAddress = IERC721(_tokenAddress);
-        return TokenAddress.ownerOf(_tokenId) == _user;
+        return (
+            _seller != address(0) &&
+            _buyer != address(0) &&
+            TokenAddress.ownerOf(_tokenId) == _seller &&
+            TokenAddress.isApprovedForAll(_seller, address(this))
+        );
     }
 
-    function isApprovalSet (address _tokenAddress, address _user) internal view returns(bool) {
+    function isValidPurchase (address _seller, address _buyer, address _tokenAddress, uint256 _tokenId, uint256 _price) internal view returns(bool) {
         IERC721 TokenAddress = IERC721(_tokenAddress);
-        return TokenAddress.isApprovedForAll(_user, address(this));
+        return (
+            _buyer == msg.sender &&
+            _price == msg.value &&
+            TokenAddress.ownerOf(_tokenId) == _seller &&
+            TokenAddress.isApprovedForAll(_seller, address(this))
+        );
     }
 
-    // Listing Functions
+    // Internal Listing Functions
 
     function generateListingId (Listing memory _listing) internal view returns(uint256) {
         return uint256(keccak256(abi.encodePacked(abi.encodePacked(_listing.seller, _listing.buyer, _listing.tokenAddress, _listing.tokenId, _listing.price))));
     }
 
+    function completePurchase (uint256 _listingId, Listing memory _listing) internal {
+        delete Listings[_listingId];
+
+        IERC721 TokenContract = IERC721(_listing.tokenAddress);
+        TokenContract.transferFrom(_listing.seller, _listing.buyer, _listing.tokenId);
+        
+        payable(_listing.seller).transfer(msg.value - (msg.value / 100));
+    }
+
+    // External Listing Functions
+
     function createListing (address _buyer, address _tokenAddress, uint256 _tokenId, uint256 _price) external returns(uint256) {
-        require(isOwner(_tokenAddress, _tokenId, msg.sender));
-        require(isApprovalSet(_tokenAddress, msg.sender));
+        require(isValidListing(msg.sender, _buyer, _tokenAddress, _tokenId));
 
         Listing memory _listing = Listing(
             msg.sender,
@@ -57,6 +77,13 @@ contract Exchange is Ownable {
         Listings[listingId] = _listing;
 
         return listingId;
+    }
+
+    function purchaseListing (uint256 _listingId) external payable {
+        Listing memory _listing = Listings[_listingId];
+        require(isValidPurchase(_listing.seller, _listing.buyer, _listing.tokenAddress, _listing.tokenId, _listing.price));
+
+        completePurchase(_listingId, _listing);
     }
 
 }
