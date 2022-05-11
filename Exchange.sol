@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 contract Exchange is Ownable {
 
     mapping(uint256 => Listing) public Listings;
+    mapping(address => uint256) public ListingsByAddress;
     struct Listing {
         address seller;
         address buyer;
@@ -52,6 +53,7 @@ contract Exchange is Ownable {
 
     function completePurchase (uint256 _listingId, Listing memory _listing) internal {
         delete Listings[_listingId];
+        delete ListingsByAddress[_listing.seller];
 
         IERC721 TokenContract = IERC721(_listing.tokenAddress);
         TokenContract.transferFrom(_listing.seller, _listing.buyer, _listing.tokenId);
@@ -60,10 +62,6 @@ contract Exchange is Ownable {
     }
 
     // External Listing Functions
-
-    function getListingId (address _seller, address _buyer, address _tokenAddress, uint256 _tokenId, uint256 _price) external view returns(uint256) {
-        return uint256(keccak256(abi.encodePacked(_seller, _buyer, _tokenAddress, _tokenId, _price)));
-    }
 
     function createListing (address _buyer, address _tokenAddress, uint256 _tokenId, uint256 _price) external returns(uint256) {
         require(isValidListing(msg.sender, _buyer, _tokenAddress, _tokenId));
@@ -78,9 +76,23 @@ contract Exchange is Ownable {
 
         uint256 listingId = generateListingId(_listing);
 
+        if (ListingsByAddress[msg.sender] != 0) {
+            delete Listings[ListingsByAddress[msg.sender]];
+            delete ListingsByAddress[msg.sender];
+        }
+
         Listings[listingId] = _listing;
+        ListingsByAddress[msg.sender] = listingId;
 
         return listingId;
+    }
+
+    function cancelListing (uint256 _listingId) external {
+        Listing memory _listing = Listings[_listingId];
+        require(msg.sender == _listing.seller);
+
+        delete Listings[_listingId];
+        delete ListingsByAddress[msg.sender];
     }
 
     function purchaseListing (uint256 _listingId) external payable {
